@@ -2,41 +2,39 @@ from src.sim import Simulator
 from src.data_loaders import Data
 from src.sim import Indexes
 
-weights = {
-    "docente_NE":              0.0,
-    "laboratorio":             0.0,
-    "pre_requisito":           0.0,
-    "razao_discente_docente":  0.0,
-    "ch":                      0.0,                  
-}
-
-data = Data(curriculum_file_path="data/study/curriculo.xlsx",
-            demand_file_path="data/study/demanda.xlsx",
-            projects_file_path="data/study/projetos.xlsx",
-            camaras_file_path="data/study/camaras.xlsx"
+data = Data(
+    curriculum_file_path="data/cleaned/study2/curriculo.xlsx",
+    demand_file_path="data/cleaned/study2/demanda.xlsx",
+    camaras_file_path="data/cleaned/study2/camaras.xlsx"
 )
-s = Simulator(data, weights)
 
-s.simulate_by_component(Indexes.IP_COMPONENTE,
-                        total=80, 
-                        use_elective=False,
-                        min_by_project=1,
-                        xlsx_output_file="data/study/results/bolsas_por_componente.xlsx")
+s = Simulator(data)
 
-s.simulate_by_area(Indexes.IP_COMPONENTE,
-                   total=80,
-                   use_elective=False,
-                   min_by_project=1,
-                   xlsx_output_file="data/study/results/bolsas_por_camara.xlsx")
-
-s.simulate_by_component_and_practice(Indexes.IP_TEORICA,
-                                total=80,
-                                min_by_project=1,
-                                xlsx_output_file="data/study/results/bolsas_por_componente_praticas.xlsx")
+df_component = s.simulate_by_component_and_practice(
+    Indexes.IP_TEORICA,
+    total=80,
+    min_by_compulsory=1,
+    min_by_project=0,
+    xlsx_output_file="results/study2/bolsas_por_componente.xlsx"
+)
 
 
-s.simulate_by_area_and_practice(Indexes.IP_TEORICA,
-                                total=80,
-                                min_by_project=1,
-                                xlsx_output_file="data/study/results/bolsas_por_camara_praticas.xlsx")
-    
+df_area = s.simulate_by_area_and_practice(
+    Indexes.IP_TEORICA,
+    total=80,
+    min_by_compulsory=1,
+    min_by_project=0,
+    xlsx_output_file="results/study2/bolsas_por_camara.xlsx"
+)
+
+print(data.curriculum_df.to_string())
+
+data.get_demand_by_component().to_excel('teste.xlsx')
+
+print("\n\n\n")
+print("SIMULAÇÃO POR COMPONENTE: ")
+print(df_component.to_string())
+
+print("\n\n\n")
+print("SIMULAÇÃO POR ÁREA: ")
+print(df_area.to_string())
