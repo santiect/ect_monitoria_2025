@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 
 class Indexes:
-    
-    #IPT para cada componente
+ 
     @staticmethod
     def IP_TEORICA(df):
         df['IP'] = ((df['prop_matriculados'] * (df['ch_teorica']/df['ch_teorica'].sum()) *(1+df['prop_obrigatorio']) *(1+df['prop_pre_requisito'])))/(df["prop_forca_trabalho"])
@@ -14,10 +13,10 @@ class Indexes:
     
 class Simulator:
 
-    def __init__(self, data, weights=None):
+    def __init__(self, data, MAX_ANUAL_MONITOR=600):
         self.data = data
-        self.weights = weights
-
+        self.MAX_ANUAL_MONITOR = MAX_ANUAL_MONITOR
+   
     def simulate_by_area_and_practice(self, index_function, total, min_by_compulsory=0, min_by_project=0, xlsx_output_file=None):
         df = self.simulate_by_component_and_practice(
             index_function,
@@ -26,16 +25,30 @@ class Simulator:
             min_by_project=min_by_project,
             xlsx_output_file=xlsx_output_file
         )
-        numeric_columns_to_sum = [
-            'matriculados', 'n_turmas', 'n_subturmas',
-            'ch_teorica', 'ch_pratica', 'ch_total', 
-            'pre_requisito', "n_componentes", "bolsas_pratica","bolsas_teorica","bolsas_total", "IP"
-        ]
-        agg_dict = {col: 'sum' for col in numeric_columns_to_sum if col in df.columns}
-        if 'n_professores' in df.columns:
-            agg_dict['n_professores'] = 'first'
-        df = df.groupby('camara').agg(agg_dict).reset_index()
+        df = df.groupby('camara').agg(
+            matriculados      = ('matriculados', 'sum'),
+            n_turmas          = ('n_turmas', 'sum'),
+            n_subturmas       = ('n_subturmas', 'sum'),
+            ch_teorica        = ('ch_teorica', 'sum'),
+            ch_pratica        = ('ch_pratica', 'sum'),
+            ch_total          = ('ch_total', 'sum'),
+            obrigatorio_generalista = ('obrigatorio_generalista', 'sum'),
+            obrigatorio_enfase = ('obrigatorio_enfase', 'mean'),
+            pre_requisito     = ('pre_requisito', 'sum'),
+            n_professores     = ('n_professores', 'first'),
+            n_componentes     = ('n_componentes', 'count'),
+            prop_matriculados = ('prop_matriculados', 'sum'),
+            prop_ch_total     = ('prop_ch_total', 'sum'),
+            prop_pre_requisito = ('prop_pre_requisito', 'sum'),
+            prop_forca_trabalho = ('prop_forca_trabalho', 'first'),
+            prop_obrigatorio  = ('prop_obrigatorio', 'mean'),
+            IP                = ('IP', 'sum'),
+            bolsas_pratica    = ('bolsas_pratica', 'sum'),
+            bolsas_teorica    = ('bolsas_teorica', 'sum'),
+            bolsas_total      = ('bolsas_total', 'sum')
+        ).reset_index()
         df = df.rename(columns={'camara': 'titulo'})
+        df = df.sort_values(by="bolsas_total", ascending=False)
         self.__write_xlsx(df, xlsx_output_file)
         return df
 
@@ -44,6 +57,7 @@ class Simulator:
         df = index_function(df)
         df, remaining = self.distribute_by_practice(df, total)
         df = self.distribute(df, remaining, "IP", min_by_compulsory=min_by_compulsory, min_by_project=min_by_project)
+        df = df.sort_values(by="bolsas_total", ascending=False)
         self.__write_xlsx(df, xlsx_output_file)
         return df
 
@@ -52,17 +66,15 @@ class Simulator:
             df.to_excel(xlsx_output_file)
 
     def distribute_by_practice(self, df, total):
-        df['bolsas_pratica'] = np.where(df['ch_pratica_base'] > 0, df['ch_pratica'] / 300, 0)
+        df['bolsas_pratica'] = np.where(df['ch_pratica_base'] > 0, df['ch_pratica'] / self.MAX_ANUAL_MONITOR, 0)
         df['bolsas_pratica'] = df['bolsas_pratica'].apply(np.ceil).astype(int)
         necessidade_pratica = df['bolsas_pratica'].sum()
         if necessidade_pratica > total:
             print(f"AVISO: Necessidade de bolsas de prática ({necessidade_pratica}) excede o total ({total}).")
             print("Distribuindo todas as bolsas disponíveis para a prática.")
             if necessidade_pratica > 0:
-                # Distribui as 'total' bolsas proporcionalmente à necessidade de cada um
                 proporcao_necessidade = df['bolsas_pratica'] / necessidade_pratica
                 df['bolsas_pratica'] = (proporcao_necessidade * total).apply(np.floor).astype(int)
-                # Adiciona os resíduos
                 restantes = total - df['bolsas_pratica'].sum()
                 if restantes > 0:
                     residuos = (proporcao_necessidade * total) - df['bolsas_pratica']
@@ -70,8 +82,6 @@ class Simulator:
                     df.loc[indices_maiores, 'bolsas_pratica'] += 1
             else:
                 df['bolsas_pratica'] = 0
-
-        # Calcula o total de bolsas restantes após a alocação para a prática.
         bolsas_alocadas = int(df['bolsas_pratica'].sum())
         remaining = max(0, total - bolsas_alocadas)
         return df, remaining
