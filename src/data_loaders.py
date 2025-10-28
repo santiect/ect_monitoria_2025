@@ -101,7 +101,7 @@ class Data:
             how='left'
         )
 
-        print(demand_with_info)
+        #print(demand_with_info)
         demand_with_info['nome'] = np.where(
             demand_with_info['nome_y'].notna(),
             demand_with_info['nome_y'],
@@ -149,7 +149,7 @@ class Data:
         summary_df = pd.merge(summary_df, self.camaras_df, on='camara', how='left')
         summary_df['n_professores'] = summary_df['n_professores'].fillna(0).astype(int)
         summary_df['n_componentes'] = 1
-        print(summary_df.to_string())
+        #print(summary_df.to_string())
         self.__add_proportions(summary_df)
         return summary_df
 

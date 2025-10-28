@@ -58,6 +58,8 @@ class Simulator:
         df, remaining = self.distribute_by_practice(df, total)
         df = self.distribute(df, remaining, "IP", min_by_compulsory=min_by_compulsory, min_by_project=min_by_project)
         df = df.sort_values(by="bolsas_total", ascending=False)
+        df = df[['codigo', 'titulo', 'camara', 'matriculados', 'n_turmas', 'n_subturmas', 'ch_teorica', 'ch_pratica', 'ch_pratica_base', 'ch_total', 'obrigatorio_generalista', 'obrigatorio_enfase', 'pre_requisito', 'n_professores', 'n_componentes', 'prop_matriculados', 'prop_ch_total', 'prop_pre_requisito', 'prop_forca_trabalho', 'prop_obrigatorio', 'IP', 'bolsas_pratica', 'bolsas_teorica', 'bolsas_total']]
+        #print(df.columns.tolist())
         self.__write_xlsx(df, xlsx_output_file)
         return df
 
